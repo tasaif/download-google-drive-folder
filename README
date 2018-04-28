@@ -1,3 +1,8 @@
+Prerequisites:
+  ruby (can install via rvm https://rvm.io/)
+  bundle (gem install bundle)
+    Install dependencies via: $ bundle install
+
 Usage:
   ./download-google-drive-folder --folder-id 'foo' --client-secrets 'client_secrets.json' --credentials-path 'token.yaml' --target-folder 'fiz'
 
