@@ -1,0 +1,19 @@
+Usage:
+  ./download-google-drive-folder --folder-id 'foo' --client-secrets 'client_secrets.json' --credentials-path 'token.yaml' --target-folder 'fiz'
+
+Parameters:
+  --folder-id
+    You can find the folder id in the url by browsing to the folder in Google Drive
+  --client-secrets
+    Follow the quickstart guide under 'Sources' for information on generating the client-secrets.json
+  --credentials-path
+    Specifies where you want the script to cache the credentials for future queries
+  --page-size
+    Optional max number of files to download default is 100
+  --target-folder
+    Optional destination folder default is current directory
+
+Sources:
+  https://developers.google.com/drive/v3/web/quickstart/ruby
+  https://developers.google.com/drive/v3/reference/
+  https://stackoverflow.com/questions/39669343/download-a-file-from-google-drive-using-google-api-ruby-client

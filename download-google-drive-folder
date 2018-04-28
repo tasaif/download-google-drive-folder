@@ -1,0 +1,88 @@
+#!/usr/bin/env ruby
+
+require 'google/apis/drive_v3'
+require 'googleauth'
+require 'googleauth/stores/file_token_store'
+require 'fileutils'
+require "readline"
+require 'pry'
+
+class Application
+  def initialize(options)
+    @options = options
+    @oob_uri = 'urn:ietf:wg:oauth:2.0:oob'.freeze
+    @application_name = 'Download Google Drive Folder'.freeze
+    @client_secrets_path = @options["client-secrets"].freeze
+    @credentials_path = @options["credentials-path"].freeze
+    @scope = Google::Apis::DriveV3::AUTH_DRIVE_READONLY
+    # Initialize the API
+    @service = Google::Apis::DriveV3::DriveService.new
+    @service.client_options.application_name = @application_name
+    @service.authorization = authorize
+  end
+
+  ##
+  # Ensure valid credentials, either by restoring from the saved credentials
+  # files or intitiating an OAuth2 authorization. If authorization is required,
+  # the user's default browser will be launched to approve the request.
+  #
+  # @return [Google::Auth::UserRefreshCredentials] OAuth2 credentials
+  def authorize
+    client_id = Google::Auth::ClientId.from_file(@client_secrets_path)
+    token_store = Google::Auth::Stores::FileTokenStore.new(file: @credentials_path)
+    authorizer = Google::Auth::UserAuthorizer.new(client_id, @scope, token_store)
+    user_id = 'default'
+    credentials = authorizer.get_credentials(user_id)
+    if credentials.nil?
+      url = authorizer.get_authorization_url(base_url: @oob_uri)
+      puts 'Open the following URL in the browser and enter the ' \
+           "resulting code after authorization:\n" + url
+      code = Readline.readline("> ", true)
+      credentials = authorizer.get_and_store_credentials_from_code(
+        user_id: user_id, code: code, base_url: @oob_uri
+      )
+    end
+    credentials
+  end
+
+  def main
+    target_folder = @options['target-folder'] || '.'
+    Dir.mkdir target_folder
+    file_id = @options['folder-id'] # In Google Drive, everything is a file including folders
+    query_options = {
+      page_size: @options['page-size'],
+      q: "'#{file_id}' in parents"
+    }
+    response = @service.list_files(query_options)
+    response.files.each do |file|
+      target_path = [target_folder, file.name].join('/')
+      puts "#{file.id} #{target_path}"
+      puts @service.get_file(file.id, download_dest: target_path)
+    end
+  end
+end
+
+def get_opt(opt)
+  index = ARGV.index("--#{opt}")
+  parm = ARGV[index+1]
+end
+
+# Prepare user input
+application_input = {}
+ARGV.each_with_index do |parameter, index|
+  next if not parameter.start_with?("--")
+  application_input[parameter.sub(/^--/, "")] = ARGV[index+1]
+end
+required_cli_parameters = [
+  'client-secrets',
+  'folder-id',
+  'credentials-path'
+].each do |opt|
+  next if application_input.has_key?(opt)
+  puts "Error: #{opt} not set"
+  exit 1
+end
+
+# Run authorization/download
+app = Application.new(application_input)
+app.main
